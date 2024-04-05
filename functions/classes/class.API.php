@@ -299,9 +299,9 @@ class API  {
 			// stream_socket_client may create PHP WARNINGS before socket is created and $errstr is set - also if it cannot connect to port, we ignore that !
 			set_error_handler([&$this, 'php_error_handler']);
 			// conect and get result
-			stream_socket_client("ssl://".$this->hostname.":".$p, $errno, $errstr, $this->timeout, STREAM_CLIENT_CONNECT, $this->stream);
+			$client = stream_socket_client("ssl://".$this->hostname.":".$p, $errno, $errstr, $this->timeout, STREAM_CLIENT_CONNECT, $this->stream);
 			// process result
-			$certificate = $this->process_fetch_result ($errno, $errstr, $execution_time, $p);
+			$certificate = $this->process_fetch_result ($errno, $errstr, $execution_time, $p, $client);
 			// if not false quit, we found something
 			if ($certificate!==false) {
 				$this->certificate = $certificate;
@@ -321,7 +321,7 @@ class API  {
 	 * @param  [type] $port
 	 * @return [type]
 	 */
-	private function process_fetch_result ($errno, $errstr, $execution_time, $port) {
+	private function process_fetch_result ($errno, $errstr, $execution_time, $port, $client) {
 		// check stream
 		if($this->stream===false && strlen($errstr)==0) {
 			// throw exception
@@ -336,6 +336,9 @@ class API  {
 		else {
 			// get
 			$cont = stream_context_get_params($this->stream);
+
+			// metadata - TLS version
+			$metadata = stream_get_meta_data($client);
 
 			// get cert and export it
 			$peer_cert       = $cont["options"]["ssl"]["peer_certificate"];
@@ -363,7 +366,8 @@ class API  {
 					"expires"	  => $valid_to,
 					"created"	  => $execution_time,
 					"port"		  => $port,
-					"ip" 		  => $this->resolve_ip($this->hostname)
+					"ip" 		  => $this->resolve_ip($this->hostname),
+					"tls_proto"   => $metadata['crypto']['cipher_version']
 				];
 			}
 		}
