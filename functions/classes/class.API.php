@@ -341,6 +341,7 @@ class API  {
 			$cont = stream_context_get_params($this->stream);
 
 			// metadata - TLS version
+			if(!is_bool($client))
 			$metadata = stream_get_meta_data($client);
 
 			// get cert and export it
@@ -370,7 +371,7 @@ class API  {
 					"created"	  => $execution_time,
 					"port"		  => $port,
 					"ip" 		  => $this->resolve_ip($this->hostname),
-					"tls_proto"   => $metadata['crypto']['cipher_version']
+					"tls_proto"   => @$metadata['crypto']['cipher_version']
 				];
 			}
 		}
