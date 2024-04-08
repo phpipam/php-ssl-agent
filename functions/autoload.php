@@ -21,6 +21,9 @@ function MyErrHandler ($errno, $errstr, $errfile, $errline) {
 require( dirname(__FILE__) . '/classes/class.API_result.php' );	// Class to handle API results
 require( dirname(__FILE__) . '/classes/class.API.php' );		// Class to handle API calls
 
+// restore error handler
+restore_error_handler();
+
 // autoload classes
 $API_result	= new API_result ();
 $API		= new API ($API_result);

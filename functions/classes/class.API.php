@@ -168,7 +168,10 @@ class API  {
 	 * @return void
 	 */
 	private function validate_hostname () {
+		// invalid
 		if (!filter_var($this->hostname, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+			return false;
+		}elseif (strlen($this->hostname)==0) {
 			return false;
 		}
 		// ok

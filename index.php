@@ -20,7 +20,7 @@
  */
 
 
-// try/catch api
+// api
 try {
 	# functions and classes loader
 	require(dirname(__FILE__).'/functions/autoload.php');
@@ -50,9 +50,12 @@ try {
 	$err_result = [
 		"success" => false,
 		"code"    => $API_result->get_code (),
-		"error"   => $e->getMessage (),
-		"ip"      => $API->resolve_ip ($API->hostname)
+		"error"   => $e->getMessage ()
 	];
+	// add ip if API class is correctly loaded
+	if (isset($API)) {
+		$err_result['ip'] = $API->resolve_ip ($API->hostname);
+	}
 	// output result
 	echo $API_result->show ($err_result);
 }
