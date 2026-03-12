@@ -127,7 +127,13 @@ class API_result {
 	 * @method set_header
 	 */
 	private function set_header () {
+		$description = isset($this->errors[$this->code])
+			? $this->errors[$this->code]
+			: "Unknown";
 		header("Content-Type: application/json; charset=UTF-8");
-		header("HTTP/1.1 ".$this->code." ".$this->errors[$this->code]);
+		header("HTTP/1.1 ".$this->code." ".$description);
+		header("X-Content-Type-Options: nosniff");
+		header("X-Frame-Options: DENY");
+		header("Cache-Control: no-store");
 	}
 }

@@ -3,8 +3,11 @@
 /**
  * @debugging functions -------------------
  */
+if(@$debugging===true)
 ini_set('display_errors', 1);
-error_reporting(E_ALL ^ E_NOTICE ^ E_STRICT ^ E_DEPRECATED ^E_WARNING);
+else
+ini_set('display_errors', 0);
+error_reporting(E_ALL ^ E_NOTICE ^ E_STRICT ^ E_DEPRECATED ^ E_WARNING);
 
 // set custom error handler
 set_error_handler ('MyErrHandler');
