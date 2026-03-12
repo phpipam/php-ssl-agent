@@ -32,3 +32,12 @@ $permitted_proxied_hosts = [
 $permitted_trusted_proxies = [
 				// "172.16.20.10"
 				];
+
+/**
+ * Allow scanning of private and reserved IP ranges
+ *
+ * 	Set to true only when the agent is deployed on a trusted internal network
+ * 	and needs to scan internal hosts (RFC 1918, loopback, link-local, etc.).
+ * 	Leave false (the default) to block SSRF attacks.
+ */
+$scan_private_ips = false;

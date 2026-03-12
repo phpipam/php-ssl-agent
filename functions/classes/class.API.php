@@ -62,6 +62,12 @@ class API  {
 	protected $max_ports = 10;
 
 	/**
+	 * Whether scanning private/reserved IP ranges is permitted
+	 * @var bool
+	 */
+	protected $allow_private_ips = false;
+
+	/**
 	 * Scan result
 	 * @var array
 	 */
@@ -111,10 +117,6 @@ class API  {
 		if ($this->validate_hostname()===false && $this->validate_ip_address()===false) {
 			$this->throw_exception (400, "Invalid hostname or IP address");
 		}
-		// block SSRF: reject private and reserved IP ranges
-		if ($this->validate_ip_address()===true && $this->is_private_ip($this->hostname)) {
-			$this->throw_exception (400, "Scanning private or reserved IP addresses is not permitted");
-		}
 		// validate ports
 		if ($this->validate_ports()===false) {
 			$this->throw_exception (400, "Invalid ports");
@@ -154,6 +156,18 @@ class API  {
 	public function register_trusted_proxies ($proxies = []) {
 		if (is_array($proxies)) {
 			$this->trusted_proxies = $proxies;
+		}
+	}
+
+	/**
+	 * Allow or deny scanning of private and reserved IP ranges
+	 * @method allow_private_ips
+	 * @param  bool $allow
+	 * @return void
+	 */
+	public function allow_private_ips ($allow = false) {
+		if (is_bool($allow)) {
+			$this->allow_private_ips = $allow;
 		}
 	}
 
@@ -287,6 +301,10 @@ class API  {
 	 * @return void
 	 */
 	public function scan () {
+		// block SSRF: reject private and reserved IP ranges unless explicitly allowed
+		if (!$this->allow_private_ips && $this->validate_ip_address()===true && $this->is_private_ip($this->hostname)) {
+			$this->throw_exception (400, "Scanning private or reserved IP addresses is not permitted");
+		}
 		//set stream options
 		$this->set_stream_options ();
 		// init stream
