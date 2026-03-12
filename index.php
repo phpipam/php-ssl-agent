@@ -30,6 +30,7 @@ try {
 	# register permitted hosts
 	$API->register_hosts ($permitted_direct_hosts);
 	$API->register_hosts_proxied ($permitted_proxied_hosts);
+	$API->register_trusted_proxies ($permitted_trusted_proxies);
 
 	# validate requesting host
 	$API->validate_requesting_host ();

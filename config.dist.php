@@ -6,8 +6,8 @@
  * 	Direct hosts
  */
 $permitted_direct_hosts = [
-					"localhost"           => "172.16.13.160"
-					];
+				"localhost"           => "172.16.13.160"
+				];
 
 /**
  * Hosts permitted to make API calls
@@ -15,4 +15,15 @@ $permitted_direct_hosts = [
  * 	Proxied hosts / XFF
  */
 $permitted_proxied_hosts = [
-					];
+				];
+
+/**
+ * Trusted reverse proxy IPs
+ *
+ * 	If REMOTE_ADDR matches one of these IPs the agent will additionally
+ * 	validate the X-Forwarded-For header against $permitted_proxied_hosts.
+ * 	List only IPs of known reverse proxies here.
+ */
+$permitted_trusted_proxies = [
+				// "172.16.13.50"
+				];

@@ -20,6 +20,12 @@ class API  {
 	protected $hosts_proxied = [];
 
 	/**
+	 * Array of trusted reverse proxy IPs. Loaded via autoload.php
+	 * @var array
+	 */
+	protected $trusted_proxies = [];
+
+	/**
 	 * Requested hostname
 	 * @var string
 	 */
@@ -50,6 +56,12 @@ class API  {
 	protected $timeout = 2;
 
 	/**
+	 * Maximum number of ports to scan per request
+	 * @var int
+	 */
+	protected $max_ports = 10;
+
+	/**
 	 * Scan result
 	 * @var array
 	 */
@@ -64,11 +76,9 @@ class API  {
 
 
 
-
 	/**
 	 * Constructor
 	 * @method __construct
-	 * @param  Database_PDO $Database
 	 * @param  string $API_result
 	 */
 	public function __construct ($API_result = "") {
@@ -101,6 +111,10 @@ class API  {
 		if ($this->validate_hostname()===false && $this->validate_ip_address()===false) {
 			$this->throw_exception (400, "Invalid hostname or IP address");
 		}
+		// block SSRF: reject private and reserved IP ranges
+		if ($this->validate_ip_address()===true && $this->is_private_ip($this->hostname)) {
+			$this->throw_exception (400, "Scanning private or reserved IP addresses is not permitted");
+		}
 		// validate ports
 		if ($this->validate_ports()===false) {
 			$this->throw_exception (400, "Invalid ports");
@@ -120,8 +134,8 @@ class API  {
 	}
 
 	/**
-	 * Register all allowed hosts
-	 * @method register_hosts
+	 * Register all allowed proxied hosts
+	 * @method register_hosts_proxied
 	 * @param  array $hosts
 	 * @return void
 	 */
@@ -132,8 +146,20 @@ class API  {
 	}
 
 	/**
+	 * Register trusted reverse proxy IPs
+	 * @method register_trusted_proxies
+	 * @param  array $proxies
+	 * @return void
+	 */
+	public function register_trusted_proxies ($proxies = []) {
+		if (is_array($proxies)) {
+			$this->trusted_proxies = $proxies;
+		}
+	}
+
+	/**
 	 * Make sure host is allowed to access API
-	 * @method validate_host
+	 * @method validate_requesting_host
 	 * @return void
 	 */
 	public function validate_requesting_host () {
@@ -141,9 +167,13 @@ class API  {
 		if (!in_array($_SERVER['REMOTE_ADDR'], $this->hosts_direct)) {
 			$this->throw_exception (401, "Host not permitted to access API !");
 		}
-		// check proxied host
-		if($_SERVER['REMOTE_ADDR']=="172.16.13.50") {
-			if(!in_array($_SERVER['HTTP_X_FORWARDED_FOR'], $this->hosts_proxied)) {
+		// if request comes from a trusted proxy, also validate the X-Forwarded-For header
+		if (in_array($_SERVER['REMOTE_ADDR'], $this->trusted_proxies)) {
+			// take only the first IP from a potentially comma-separated XFF value
+			$xff = isset($_SERVER['HTTP_X_FORWARDED_FOR'])
+				? trim(explode(",", $_SERVER['HTTP_X_FORWARDED_FOR'])[0])
+				: "";
+			if (!filter_var($xff, FILTER_VALIDATE_IP) || !in_array($xff, $this->hosts_proxied)) {
 				$this->throw_exception (401, "Proxied host not permitted to access API !");
 			}
 		}
@@ -151,8 +181,8 @@ class API  {
 
 	/**
 	 * Validate IP
-	 * @method validate_ip
-	 * @return void
+	 * @method validate_ip_address
+	 * @return bool
 	 */
 	private function validate_ip_address () {
 		if (!filter_var($this->hostname, FILTER_VALIDATE_IP)) {
@@ -163,9 +193,21 @@ class API  {
 	}
 
 	/**
-	 * Validate IP
-	 * @method validate_ip
-	 * @return void
+	 * Check whether an IP is private or reserved (SSRF protection)
+	 * @method is_private_ip
+	 * @param  string $ip
+	 * @return bool
+	 */
+	private function is_private_ip ($ip) {
+		return filter_var($ip, FILTER_VALIDATE_IP,
+			FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+		) === false;
+	}
+
+	/**
+	 * Validate hostname
+	 * @method validate_hostname
+	 * @return bool
 	 */
 	private function validate_hostname () {
 		// invalid
@@ -181,17 +223,22 @@ class API  {
 	/**
 	 * Validate requested ports for scanning
 	 * @method validate_ports
-	 * @return [type]
+	 * @return bool
 	 */
 	private function validate_ports () {
 		// check
 		if (!is_array($this->ports))	{ return false; }
 		// null
 		if (sizeof($this->ports)==0)	{ return false; }
-		// check
+		// limit number of ports to prevent abuse
+		if (sizeof($this->ports) > $this->max_ports) { return false; }
+		// check each port
 		foreach ($this->ports as $p) {
-			if(!is_numeric($p)) 		{ return false; }
+			if (!is_numeric($p))			{ return false; }
+			$port = (int) $p;
+			if ($port < 1 || $port > 65535)	{ return false; }
 		}
+		return true;
 	}
 
 	/**
@@ -212,7 +259,7 @@ class API  {
 	/**
 	 * Return result
 	 * @method get_result
-	 * @return [type]
+	 * @return array
 	 */
 	public function get_result () {
 		// do we have any result ?
@@ -233,12 +280,11 @@ class API  {
 
 
 
-
 	/**
 	 * Execute check
 	 *
-	 * @method execute
-	 * @return string|void
+	 * @method scan
+	 * @return void
 	 */
 	public function scan () {
 		//set stream options
@@ -273,14 +319,14 @@ class API  {
 	/**
 	 * Create stream
 	 * @method init_stream
-	 * @return [type]
+	 * @return void
 	 */
 	private function init_stream () {
 		$this->stream = stream_context_create ($this->stream_options);
 	}
 
 	/**
-	 * Error handler
+	 * Error handler used during stream_socket_client to suppress PHP warnings
 	 * @method php_error_handler
 	 * @param  int $errno
 	 * @param  string $errstr
@@ -291,18 +337,20 @@ class API  {
 	}
 
 	/**
-	 * Got through requested ports and execute scan
+	 * Go through requested ports and execute scan
 	 * @method execute_scan
-	 * @param  [type] $execution_time
-	 * @return [type]
+	 * @param  string $execution_time
+	 * @return void
 	 */
 	private function execute_scan ($execution_time) {
 		// loop through ports
 		foreach ($this->ports as $p) {
 			// stream_socket_client may create PHP WARNINGS before socket is created and $errstr is set - also if it cannot connect to port, we ignore that !
-			set_error_handler([&$this, 'php_error_handler']);
-			// conect and get result
+			set_error_handler([$this, 'php_error_handler']);
+			// connect and get result
 			$client = stream_socket_client("ssl://".$this->hostname.":".$p, $errno, $errstr, $this->timeout, STREAM_CLIENT_CONNECT, $this->stream);
+			// restore error handler after each attempt
+			restore_error_handler();
 			// process result
 			$certificate = $this->process_fetch_result ($errno, $errstr, $execution_time, $p, $client);
 			// if not false quit, we found something
@@ -310,70 +358,65 @@ class API  {
 				$this->certificate = $certificate;
 				break;
 			}
-			// restore error handler
-			restore_error_handler();
 		}
 	}
 
 	/**
 	 * We got some result from scan, process it
 	 * @method process_fetch_result
-	 * @param  [type] $errno
-	 * @param  [type] $errstr
-	 * @param  [type] $execution_time
-	 * @param  [type] $port
-	 * @return [type]
+	 * @param  int $errno
+	 * @param  string $errstr
+	 * @param  string $execution_time
+	 * @param  string $port
+	 * @param  resource|bool $client
+	 * @return array|bool
 	 */
 	private function process_fetch_result ($errno, $errstr, $execution_time, $port, $client) {
-		// check stream
-		if($this->stream===false && strlen($errstr)==0) {
-			// throw exception
+		// check if connection failed with an error message
+		if (strlen($errstr) > 0) {
 			$this->throw_exception (500, $errstr);
 		}
-		// check for errors, return false
-		elseif (strlen($errstr)>0) {
-			// throw exception
-			$this->throw_exception (500, $errstr);
+		// check if connection failed silently
+		if ($client === false) {
+			$this->throw_exception (500, "Unable to connect to host");
 		}
-		// ok
+		// ok - get stream params
+		$cont = stream_context_get_params($this->stream);
+
+		// metadata - TLS version
+		$metadata = stream_get_meta_data($client);
+
+		// get cert and export it
+		$peer_cert       = $cont["options"]["ssl"]["peer_certificate"];
+		$peer_cert_chain = $cont["options"]["ssl"]["peer_certificate_chain"];
+
+		if (openssl_x509_export($peer_cert, $certinfo) === false) {
+			$this->throw_exception (401, "Could not fetch peer certificate");
+		}
 		else {
-			// get
-			$cont = stream_context_get_params($this->stream);
-
-			// metadata - TLS version
-			if(!is_bool($client))
-			$metadata = stream_get_meta_data($client);
-
-			// get cert and export it
-			$peer_cert       = $cont["options"]["ssl"]["peer_certificate"];
-			$peer_cert_chain = $cont["options"]["ssl"]["peer_certificate_chain"];
-
-			if(@openssl_x509_export($peer_cert, $certinfo)===false) {
-				$this->throw_exception (401, "Could not fetch peer certificate");
-			}
-			else {
-				// chain
-				$certinfo_chain = "";
-				foreach ($peer_cert_chain as $int_cert) {
-					if(@openssl_x509_export($int_cert, $output)!==false)
+			// chain
+			$certinfo_chain = "";
+			foreach ($peer_cert_chain as $int_cert) {
+				if (openssl_x509_export($int_cert, $output) !== false)
 				    $certinfo_chain .= $output;
-				}
-				// parse
-				$peer_cert_parsed = openssl_x509_parse($peer_cert);
-				$valid_to = date("Y-m-d H:i:s", $peer_cert_parsed['validTo_time_t']);
-				// return
-				return [
-					"success"     => true,
-					"serial"      => $peer_cert_parsed['serialNumber'],
-					"certificate" => trim($certinfo),
-					"chain" 	  => trim($certinfo_chain),
-					"expires"	  => $valid_to,
-					"created"	  => $execution_time,
-					"port"		  => $port,
-					"ip" 		  => $this->resolve_ip($this->hostname),
-					"tls_proto"   => @$metadata['crypto']['cipher_version']
-				];
 			}
+			// parse
+			$peer_cert_parsed = openssl_x509_parse($peer_cert);
+			$valid_to = date("Y-m-d H:i:s", $peer_cert_parsed['validTo_time_t']);
+			// return
+			return [
+				"success"     => true,
+				"serial"      => $peer_cert_parsed['serialNumber'],
+				"certificate" => trim($certinfo),
+				"chain" 	  => trim($certinfo_chain),
+				"expires"	  => $valid_to,
+				"created"	  => $execution_time,
+				"port"		  => $port,
+				"ip" 		  => $this->resolve_ip($this->hostname),
+				"tls_proto"   => isset($metadata['crypto']['cipher_version'])
+								 ? $metadata['crypto']['cipher_version']
+								 : null
+			];
 		}
 	}
 
