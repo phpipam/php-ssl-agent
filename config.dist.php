@@ -6,7 +6,7 @@
  * 	Direct hosts
  */
 $permitted_direct_hosts = [
-				"localhost"           => "172.16.13.160"
+				"localhost"           => "127.0.0.1"
 				];
 
 /**
@@ -25,5 +25,5 @@ $permitted_proxied_hosts = [
  * 	List only IPs of known reverse proxies here.
  */
 $permitted_trusted_proxies = [
-				// "172.16.13.50"
+				// "172.16.20.10"
 				];
