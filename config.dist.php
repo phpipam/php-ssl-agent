@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * Debugging flag
+ */
+$debugging = false;
+
+/**
  * Hosts permitted to make API calls
  *
  * 	Direct hosts
