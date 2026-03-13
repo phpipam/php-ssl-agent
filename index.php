@@ -31,7 +31,7 @@ try {
 	$API->register_hosts ($permitted_direct_hosts);
 	$API->register_hosts_proxied ($permitted_proxied_hosts);
 	$API->register_trusted_proxies ($permitted_trusted_proxies);
-	$API->allow_private_ips (@$scan_private_ips);
+	$API->allow_private_ips ($scan_private_ips ?? false);
 
 	# validate requesting host
 	$API->validate_requesting_host ();
