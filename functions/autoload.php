@@ -7,13 +7,13 @@ if(@$debugging===true)
 ini_set('display_errors', 1);
 else
 ini_set('display_errors', 0);
-error_reporting(E_ALL ^ E_NOTICE ^ E_STRICT ^ E_DEPRECATED ^ E_WARNING);
+error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED ^ E_WARNING);
 
 // set custom error handler
 set_error_handler ('MyErrHandler');
 // function
 function MyErrHandler ($errno, $errstr, $errfile, $errline) {
-	throw new exception ($errstr);
+	throw new Exception ($errstr);
 }
 
 /**

@@ -109,9 +109,9 @@ class API  {
 		$tmp = array_values(array_filter(explode("/", $_SERVER['REQUEST_URI'])));
 
 		// save hostname
-		$this->hostname = $tmp[sizeof($tmp)-2];
+		$this->hostname = $tmp[count($tmp)-2];
 		// save ports
-		$this->ports = explode(",", str_replace(";",",",$tmp[sizeof($tmp)-1]));
+		$this->ports = explode(",", str_replace(";",",",$tmp[count($tmp)-1]));
 
 		// first validate hostname / ip address
 		if ($this->validate_hostname()===false && $this->validate_ip_address()===false) {
@@ -243,9 +243,9 @@ class API  {
 		// check
 		if (!is_array($this->ports))	{ return false; }
 		// null
-		if (sizeof($this->ports)==0)	{ return false; }
+		if (count($this->ports)==0)	{ return false; }
 		// limit number of ports to prevent abuse
-		if (sizeof($this->ports) > $this->max_ports) { return false; }
+		if (count($this->ports) > $this->max_ports) { return false; }
 		// check each port
 		foreach ($this->ports as $p) {
 			if (!is_numeric($p))			{ return false; }
@@ -267,7 +267,7 @@ class API  {
 		// set code
 		$this->API_result->set_code ($code);
 		// throw exc
-		throw new exception ($text);
+		throw new Exception ($text);
 	}
 
 	/**
@@ -328,7 +328,6 @@ class API  {
 				'capture_peer_cert_chain' => true,
 				'capture_peer_cert'       => true,
 				'allow_self_signed'		  => true,
-				'SNI_enabled'			  => true,
 				'verify_peer'             => false,
 				'verify_peer_name'        => false,
 				'capath'				  => '/etc/ssl/certs'
