@@ -24,8 +24,12 @@
 try {
 	# functions and classes loader
 	require(dirname(__FILE__).'/functions/autoload.php');
+	# version
+	require(dirname(__FILE__).'/version.php');
 	# allowed hosts
 	require(dirname(__FILE__).'/config.php');
+
+	var_dump($version);
 
 	# register permitted hosts
 	$API->register_hosts ($permitted_direct_hosts);
@@ -40,6 +44,8 @@ try {
 	$API->scan ();
 	# print
 	$API_result->set_success (true);
+	# version
+	$API_result->add_version ($version);
 
 	# print result
 	print $API_result->show ($API->get_result());

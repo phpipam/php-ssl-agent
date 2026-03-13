@@ -45,6 +45,12 @@ class API_result {
 	private $success = false;
 
 	/**
+	 * Version
+	 * @var int
+	 */
+	private $version = 0;
+
+	/**
 	 * Result code
 	 * @var int
 	 */
@@ -66,6 +72,15 @@ class API_result {
 	public function __construct () {
 		// start time count
 		$this->starttime = microtime(true);
+	}
+
+	/**
+	 * Add version to result
+	 * @method add_version
+	 * @param  string $version
+	 */
+	public function add_version ($version = "0") {
+		$this->version = $version;
 	}
 
 	/**
@@ -112,6 +127,7 @@ class API_result {
 					"success"    => $this->success,
 					"code"       => $this->code,
 					"result"     => $result,
+					"version"    => $this->version,
 					"time"    	 => round(microtime(true) - $this->starttime, 3)." s"
 					];
 		// set header
