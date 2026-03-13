@@ -29,13 +29,11 @@ try {
 	# allowed hosts
 	require(dirname(__FILE__).'/config.php');
 
-	var_dump($version);
-
 	# register permitted hosts
 	$API->register_hosts ($permitted_direct_hosts);
 	$API->register_hosts_proxied ($permitted_proxied_hosts);
 	$API->register_trusted_proxies ($permitted_trusted_proxies);
-	$API->allow_private_ips ($scan_private_ips ?? false);
+	$API->allow_private_ips (@$scan_private_ips);
 
 	# validate requesting host
 	$API->validate_requesting_host ();
