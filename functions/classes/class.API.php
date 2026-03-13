@@ -330,6 +330,7 @@ class API  {
 				'allow_self_signed'		  => true,
 				'SNI_enabled'			  => true,
 				'verify_peer'             => false,
+				'verify_peer_name'        => false,
 				'capath'				  => '/etc/ssl/certs'
 		];
 	}
